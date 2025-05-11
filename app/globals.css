@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: sans-serif;
+  background-color: #fdfdd4; /* A soft light yellow - sticky note color */
+}
+
+.menu {
+  border-right: 1px solid #ddd;
+  box-shadow: 1px 0px 3px rgba(0, 0, 0, 0.1);
+}
+
+.task-details {
+  border-left: 1px solid #ddd;
+  box-shadow: -1px 0px 3px rgba(0, 0, 0, 0.1);
+}
