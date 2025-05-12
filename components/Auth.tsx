@@ -33,8 +33,9 @@ export default function Auth() {
         alert('Check your email for the confirmation link!');
         setView('sign-in');
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -59,9 +60,10 @@ export default function Auth() {
         router.push('/');
         router.refresh();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Sign in error:", err);
-      setError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -133,7 +135,7 @@ export default function Auth() {
                   onClick={() => setView('sign-up')}
                   className="font-medium text-indigo-600 hover:text-indigo-500"
                 >
-                  Don't have an account? Sign up
+                  {"Don't have an account? Sign up"}
                 </button>
               </div>
             </>

@@ -9,8 +9,6 @@ export default function ClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isClient, setIsClient] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -19,14 +17,11 @@ export default function ClientLayout({
   const isAuthPage = pathname === '/login';
 
   useEffect(() => {
-    setIsClient(true);
-
     // Check for active session first
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         console.log("Session check:", session ? "Active session" : "No session");
-        setUser(session?.user || null);
 
         // Only redirect if we're sure about the authentication state
         if (session?.user && isAuthPage) {
@@ -50,7 +45,6 @@ export default function ClientLayout({
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state change:", event, session ? "Has session" : "No session");
-        setUser(session?.user || null);
 
         if (event === 'SIGNED_IN') {
           console.log("User signed in, refreshing...");
