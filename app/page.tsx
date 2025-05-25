@@ -207,7 +207,7 @@ export default function Home() {
        if (selectedTask) {
          try {
            // Create an update object with proper typing
-           const updateData: Record<string, any> = {
+           const updateData: Record<string, unknown> = {
              title: selectedTask.title,
              list: selectedTask.list || 'Personal',
              completed: selectedTask.completed
@@ -228,9 +228,19 @@ export default function Home() {
              .update(updateData)
              .eq('id', selectedTask.id);
 
-           // Rest of your function...
+           if (error) {
+             console.error('Error updating task:', error);
+             setToast({ message: 'Failed to update task. Please try again.', type: 'error' });
+           } else {
+             // Update the task in the local state
+             setTasks(tasks.map(task =>
+               task.id === selectedTask.id ? selectedTask : task
+             ));
+             setToast({ message: 'Task updated successfully!', type: 'success' });
+           }
          } catch (err) {
-           // Error handling...
+           console.error('Exception updating task:', err);
+           setToast({ message: 'An unexpected error occurred. Please try again.', type: 'error' });
          }
        }
      };
