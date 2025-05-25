@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Toast from '../components/Toast';
+import { User } from '@supabase/supabase-js';
 
 interface Task {
   id: string; // UUID
@@ -14,16 +15,6 @@ interface Task {
   tags?: string[];
   completed: boolean;
   created_at: string;
-}
-
-// Add this interface at the top of your file, near your Task interface
-interface User {
-  id: string;
-  email?: string;
-  user_metadata?: {
-    [key: string]: any;
-  };
-  // Add other properties you need from the user object
 }
 
 export default function Home() {
