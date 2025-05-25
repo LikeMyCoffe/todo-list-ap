@@ -16,11 +16,21 @@ interface Task {
   created_at: string;
 }
 
+// Add this interface at the top of your file, near your Task interface
+interface User {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    [key: string]: any;
+  };
+  // Add other properties you need from the user object
+}
+
 export default function Home() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
