@@ -540,7 +540,7 @@ export default function Home() {
             </div>
           </>
         ) : (
-          <p className="text-gray-500">Select a task to view details.</p>
+          <p className="text-gray-500">Select a task to view details</p>
         )}
       </aside>
       {toast && (
