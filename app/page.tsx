@@ -11,7 +11,7 @@ interface Task {
   user_id: string;
   title: string;
   list?: string;
-  due_date?: string;
+  due_date?: string | null; // Allow null values
   tags?: string[];
   completed: boolean;
   created_at: string;
