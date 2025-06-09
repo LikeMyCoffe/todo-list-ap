@@ -59,7 +59,6 @@ const MobileNav: React.FC<MobileNavProps> = ({ onSignOut, isSigningOut }) => {
               <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Upcoming</li>
               <li className="py-2 cursor-pointer bg-gray-100 rounded-md px-2">Today</li>
               <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Calendar</li>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Sticky Wall</li>
             </ul>
           </div>
 

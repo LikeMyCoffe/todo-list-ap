@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Toast from '../components/Toast';
@@ -26,6 +26,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const calendarButtonRef = useRef<HTMLLIElement>(null);
 
   // Updated tasks state
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -293,311 +295,360 @@ export default function Home() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-return (
-  <div className="flex flex-col md:flex-row min-h-screen font-sans">
-    {/* Menu - hidden on mobile */}
-    <aside className="hidden md:block w-64 bg-white shadow-md rounded-r-lg p-4 border-r border-gray-200">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold">Menu</h2>
-        <div className="relative">
-          <input
-            type="search"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full p-2 border rounded pl-8 bg-gray-50"
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-      </div>
+  // Group tasks by due date for calendar
+  const tasksByDate = tasks.reduce((acc, task) => {
+    if (task.due_date) {
+      const dateKey = new Date(task.due_date).toISOString().split('T')[0];
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(task);
+    }
+    return acc;
+  }, {} as Record<string, Task[]>);
 
-      <div>
-        <h3 className="text-sm font-semibold mb-2">Tasks</h3>
-        <ul>
-          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'upcoming' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('upcoming')}>
-            <span className="text-gray-500">»</span> Upcoming <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] > new Date().toISOString().split('T')[0]).length}</span>
-          </li>
-          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'today' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('today')}>
-            <span className="text-gray-500">»</span> Today <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0]).length}</span>
-          </li>
-          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'all' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('all')}>
-            <span className="text-gray-500">»</span> All <span className="text-gray-400 text-xs ml-1">{tasks.length}</span>
-          </li>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
-            Calendar
-          </li>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
-            Sticky Wall
-          </li>
-        </ul>
-      </div>
-
-      <div className="mt-4">
-        <h3 className="text-sm font-semibold mb-2">Lists</h3>
-        <ul>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-            <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Personal <span className="text-gray-400 text-xs ml-1">3</span>
-          </li>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-            <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> Work <span className="text-gray-400 text-xs ml-1">6</span>
-          </li>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-            <span className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> List 1 <span className="text-gray-400 text-xs ml-1">3</span>
-          </li>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
-            + Add New List
-          </li>
-        </ul>
-      </div>
-
-      <div className="mt-4">
-        <h3 className="text-sm font-semibold mb-2">Tags</h3>
-        <div className="flex gap-2">
-          <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 1</span>
-          <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 2</span>
-          <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">+ Add Tag</span>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <div className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Settings</div>
-        <div
-          className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 text-red-500"
-          onClick={handleSignOut}
-        >
-          {isSigningOut ? 'Signing out...' : 'Sign out'}
-        </div>
-      </div>
-    </aside>
-
-    {/* Mobile Navigation - visible only on mobile */}
-    <MobileNav onSignOut={handleSignOut} isSigningOut={isSigningOut} />
-
-    {/* Main Content */}
-    <main className="flex-1 p-4 overflow-y-auto">
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold mb-2 sm:mb-0">Today <span className="text-gray-500">{tasks.length}</span></h1>
-        <div className="flex w-full sm:w-auto items-center">
-          <input
-            type="text"
-            placeholder="New task title"
-            value={newTaskTitle}
-            onChange={handleNewTaskTitleChange}
-            className="p-2 border rounded mr-2 bg-white flex-1 sm:flex-none"
-          />
-          <button
-            onClick={handleAddTask}
-            className="bg-white text-gray-700 p-2 rounded border shadow-sm hover:bg-gray-100 whitespace-nowrap"
-          >
-            + Add Task
-          </button>
-        </div>
-      </header>
-
-      <section className="task-list">
-        {tasksLoading ? (
-          <div className="text-center py-4">Loading tasks...</div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">No tasks yet. Add your first task!</div>
-        ) : (
-          <ul>
-            {filteredTasks.map(task => (
-              <li
-                key={task.id}
-                onClick={() => handleTaskClick(task.id)}
-                className="py-3 px-4 border-b flex items-center justify-between hover:bg-gray-50 cursor-pointer"
-              >
-                <div className="flex items-center">
-                  <div
-                    className="mr-2 flex-shrink-0"
-                    onClick={(e) => handleTaskCompletion(task.id, !task.completed, e)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleTaskCompletion(task.id, !task.completed, e as unknown as React.MouseEvent);
-                      }
-                    }}
-                    role="checkbox"
-                    aria-checked={task.completed}
-                    tabIndex={0}
-                  >
-                    {completingTaskId === task.id ? (
-                      <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : task.completed ? (
-                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={task.completed ? "line-through text-gray-500" : ""}>
-                    {task.title}
-                  </span>
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
-
-    {/* Task Details - fixed position on mobile when a task is selected */}
-    <aside className={`
-      ${selectedTask ? 'fixed inset-0 z-30 bg-white p-4 md:static md:inset-auto' : 'hidden'}
-      md:block md:w-96 md:bg-gray-50 md:shadow-md md:rounded-l-lg md:p-4 md:border-l md:border-gray-200
-    `}>
-      {/* Only task details or prompt, no search/filter here */}
-      {selectedTask ? (
-        <>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Task Details</h2>
-            <div className="flex items-center">
-              <div
-                className="cursor-pointer mr-2"
-                onClick={(e) => handleTaskCompletion(selectedTask.id, !selectedTask.completed, e)}
-              >
-                {selectedTask.completed ? (
-                  <div className="flex items-center text-green-500">
-                    <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Completed</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center text-gray-500">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
-                    </svg>
-                    <span>Mark as completed</span>
-                  </div>
-                )}
-              </div>
-              {/* Close button - only visible on mobile */}
-              <button
-                className="md:hidden text-gray-500"
-                onClick={() => setSelectedTask(null)}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+  return (
+    <div className="flex flex-col md:flex-row min-h-screen font-sans">
+      {/* Menu - hidden on mobile */}
+      <aside className="hidden md:block w-64 bg-white shadow-md rounded-r-lg p-4 border-r border-gray-200">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Menu</h2>
+          <div className="relative">
+            <input
+              type="search"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full p-2 border rounded pl-8 bg-gray-50"
+            />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
+        </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+        <div>
+          <h3 className="text-sm font-semibold mb-2">Tasks</h3>
+          <ul>
+            <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'upcoming' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('upcoming')}>
+              <span className="text-gray-500">»</span> Upcoming <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] > new Date().toISOString().split('T')[0]).length}</span>
+            </li>
+            <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'today' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('today')}>
+              <span className="text-gray-500">»</span> Today <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0]).length}</span>
+            </li>
+            <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'all' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('all')}>
+              <span className="text-gray-500">»</span> All <span className="text-gray-400 text-xs ml-1">{tasks.length}</span>
+            </li>
+            <li
+              ref={calendarButtonRef}
+              className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2"
+              onClick={() => setIsCalendarOpen((open) => !open)}
+            >
+              Calendar
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold mb-2">Lists</h3>
+          <ul>
+            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
+              <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Personal <span className="text-gray-400 text-xs ml-1">3</span>
+            </li>
+            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
+              <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> Work <span className="text-gray-400 text-xs ml-1">6</span>
+            </li>
+            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
+              <span className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> List 1 <span className="text-gray-400 text-xs ml-1">3</span>
+            </li>
+            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
+              + Add New List
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold mb-2">Tags</h3>
+          <div className="flex gap-2">
+            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 1</span>
+            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 2</span>
+            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">+ Add Tag</span>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Settings</div>
+          <div
+            className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 text-red-500"
+            onClick={handleSignOut}
+          >
+            {isSigningOut ? 'Signing out...' : 'Sign out'}
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Navigation - visible only on mobile */}
+      <MobileNav onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 overflow-y-auto">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+          <h1 className="text-2xl font-semibold mb-2 sm:mb-0">Today <span className="text-gray-500">{tasks.length}</span></h1>
+          <div className="flex w-full sm:w-auto items-center">
             <input
               type="text"
-              value={selectedTask.title}
-              onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
-              className="w-full p-2 border rounded bg-white"
+              placeholder="New task title"
+              value={newTaskTitle}
+              onChange={handleNewTaskTitleChange}
+              className="p-2 border rounded mr-2 bg-white flex-1 sm:flex-none"
             />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">List</label>
-            <select
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              value={selectedTask.list || 'Personal'}
-              onChange={(e) => {
-                console.log('Changing list to:', e.target.value);
-                setSelectedTask({...selectedTask, list: e.target.value});
-              }}
+            <button
+              onClick={handleAddTask}
+              className="bg-white text-gray-700 p-2 rounded border shadow-sm hover:bg-gray-100 whitespace-nowrap"
             >
-              <option value="Personal">Personal</option>
-              <option value="Work">Work</option>
-              <option value="List 1">List 1</option>
-            </select>
+              + Add Task
+            </button>
           </div>
+        </header>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">Due date</label>
-            <input
-              type="date"
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              value={selectedTask.due_date ? new Date(selectedTask.due_date).toISOString().split('T')[0] : ''}
-              onChange={(e) => {
-                const newDate = e.target.value ? e.target.value : null;
-                console.log('Setting due date to:', newDate);
-                setSelectedTask({...selectedTask, due_date: newDate});
-              }}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">Tags</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {selectedTask.tags && selectedTask.tags.map((tag, index) => (
-                <span key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
-                  {tag}
-                  <button
-                    className="ml-1 text-gray-500 hover:text-gray-700"
-                    onClick={() => {
-                      const newTags = [...(selectedTask.tags || [])];
-                      newTags.splice(index, 1);
-                      setSelectedTask({...selectedTask, tags: newTags});
-                    }}
-                  >
-                    ×
-                  </button>
-                </span>
+        <section className="task-list">
+          {tasksLoading ? (
+            <div className="text-center py-4">Loading tasks...</div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">No tasks yet. Add your first task!</div>
+          ) : (
+            <ul>
+              {filteredTasks.map(task => (
+                <li
+                  key={task.id}
+                  onClick={() => handleTaskClick(task.id)}
+                  className="py-3 px-4 border-b flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                >
+                  <div className="flex items-center">
+                    <div
+                      className="mr-2 flex-shrink-0"
+                      onClick={(e) => handleTaskCompletion(task.id, !task.completed, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleTaskCompletion(task.id, !task.completed, e as unknown as React.MouseEvent);
+                        }
+                      }}
+                      role="checkbox"
+                      aria-checked={task.completed}
+                      tabIndex={0}
+                    >
+                      {completingTaskId === task.id ? (
+                        <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : task.completed ? (
+                        <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={task.completed ? "line-through text-gray-500" : ""}>
+                      {task.title}
+                    </span>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </li>
               ))}
-              <button
-                className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer"
-                onClick={() => {
-                  const tag = prompt('Enter tag name:');
-                  if (tag) {
-                    setSelectedTask({
-                      ...selectedTask,
-                      tags: [...(selectedTask.tags || []), tag]
-                    });
-                  }
+            </ul>
+          )}
+        </section>
+      </main>
+
+      {/* Task Details - fixed position on mobile when a task is selected */}
+      <aside className={`
+        ${selectedTask ? 'fixed inset-0 z-30 bg-white p-4 md:static md:inset-auto' : 'hidden'}
+        md:block md:w-96 md:bg-gray-50 md:shadow-md md:rounded-l-lg md:p-4 md:border-l md:border-gray-200
+      `}>
+        {/* Only task details or prompt, no search/filter here */}
+        {selectedTask ? (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Task Details</h2>
+              <div className="flex items-center">
+                <div
+                  className="cursor-pointer mr-2"
+                  onClick={(e) => handleTaskCompletion(selectedTask.id, !selectedTask.completed, e)}
+                >
+                  {selectedTask.completed ? (
+                    <div className="flex items-center text-green-500">
+                      <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>Completed</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-gray-500">
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
+                      </svg>
+                      <span>Mark as completed</span>
+                    </div>
+                  )}
+                </div>
+                {/* Close button - only visible on mobile */}
+                <button
+                  className="md:hidden text-gray-500"
+                  onClick={() => setSelectedTask(null)}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                value={selectedTask.title}
+                onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
+                className="w-full p-2 border rounded bg-white"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">List</label>
+              <select
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={selectedTask.list || 'Personal'}
+                onChange={(e) => {
+                  console.log('Changing list to:', e.target.value);
+                  setSelectedTask({...selectedTask, list: e.target.value});
                 }}
               >
-                + Add Tag
+                <option value="Personal">Personal</option>
+                <option value="Work">Work</option>
+                <option value="List 1">List 1</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Due date</label>
+              <input
+                type="date"
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={selectedTask.due_date ? new Date(selectedTask.due_date).toISOString().split('T')[0] : ''}
+                onChange={(e) => {
+                  const newDate = e.target.value ? e.target.value : null;
+                  console.log('Setting due date to:', newDate);
+                  setSelectedTask({...selectedTask, due_date: newDate});
+                }}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Tags</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {selectedTask && selectedTask.tags && selectedTask.tags.map((tag, index) => (
+                  <span key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
+                    {tag}
+                    <button
+                      className="ml-1 text-gray-500 hover:text-gray-700"
+                      onClick={() => {
+                        const newTags = [...(selectedTask.tags || [])];
+                        newTags.splice(index, 1);
+                        setSelectedTask({...selectedTask, tags: newTags});
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <button
+                  className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer"
+                  onClick={() => {
+                    const tag = prompt('Enter tag name:');
+                    if (tag) {
+                      setSelectedTask({
+                        ...selectedTask,
+                        tags: [...(selectedTask.tags || []), tag]
+                      });
+                    }
+                  }}
+                >
+                  + Add Tag
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={handleDeleteTask}
+                className="bg-white text-red-500 p-2 rounded border shadow-sm hover:bg-gray-100"
+              >
+                Delete Task
+              </button>
+              <button
+                onClick={handleUpdateTask}
+                className="bg-green-500 text-white p-2 rounded shadow-sm hover:bg-green-600"
+              >
+                Save changes
               </button>
             </div>
-          </div>
+          </>
+        ) : (
+          <p className="text-gray-500 hidden md:block">Select a task to view details</p>
+        )}
+      </aside>
 
-          <div className="flex justify-between mt-4">
+      {/* Calendar Popup */}
+      {isCalendarOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl animate-fade-in">
             <button
-              onClick={handleDeleteTask}
-              className="bg-white text-red-500 p-2 rounded border shadow-sm hover:bg-gray-100"
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+              onClick={() => setIsCalendarOpen(false)}
+              aria-label="Close calendar"
             >
-              Delete Task
+              ×
             </button>
-            <button
-              onClick={handleUpdateTask}
-              className="bg-green-500 text-white p-2 rounded shadow-sm hover:bg-green-600"
-            >
-              Save changes
-            </button>
+            <h2 className="text-xl font-semibold mb-4 text-center">Task Calendar</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+              {Object.keys(tasksByDate).length === 0 ? (
+                <div className="col-span-2 text-center text-gray-500">No tasks with due dates.</div>
+              ) : (
+                Object.entries(tasksByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateTasks]) => (
+                  <div key={date} className="border rounded p-3 bg-gray-50">
+                    <div className="font-semibold mb-2 text-green-700 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" strokeWidth="2" stroke="currentColor"/><path strokeWidth="2" stroke="currentColor" d="M16 2v4M8 2v4M3 10h18"/></svg>
+                      {date}
+                    </div>
+                    <ul className="space-y-1">
+                      {dateTasks.map(task => (
+                        <li key={task.id} className="flex items-center gap-2">
+                          <span className={task.completed ? 'line-through text-gray-400' : ''}>{task.title}</span>
+                          {task.completed && <span className="text-xs text-green-500">✓</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </>
-      ) : (
-        <p className="text-gray-500 hidden md:block">Select a task to view details</p>
+        </div>
       )}
-    </aside>
 
-    {/* Toast notifications */}
-    {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
-  </div>
-);
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  );
 }
