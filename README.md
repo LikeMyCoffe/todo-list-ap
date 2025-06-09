@@ -142,3 +142,79 @@ For more information, see the <a href="https://nextjs.org/docs/app/building-your
 - This project uses the Next.js App Router and React Server Components.
 - Authentication and session management are handled via Supabase and Next.js middleware.
 - For any issues or contributions, please open an issue or pull request on <a href="https://github.com/LikeMyCoffe/todo-list-ap">GitHub</a>.
+
+---
+
+# ToDoList Next.js Application
+
+## Project Structure Overview
+
+This project is a Next.js application for managing a ToDo list, using Supabase for authentication and data storage. Below is a summary of the purpose of each folder and key file in the workspace:
+
+---
+
+### Root Files
+- **middleware.ts**: Custom Next.js middleware for handling authentication or request/response logic.
+- **next-env.d.ts**: TypeScript definitions for Next.js, required for type checking.
+- **next.config.mjs**: Next.js configuration file.
+- **package.json**: Project metadata and dependencies.
+- **postcss.config.mjs**: Configuration for PostCSS (used for CSS processing).
+- **README.md**: Project documentation (this file).
+- **tailwind.config.ts**: Tailwind CSS configuration file.
+- **tsconfig.json**: TypeScript configuration file.
+
+---
+
+### Folders
+
+#### app/
+- **layout.tsx**: Root layout for the app directory, wraps all pages and provides global structure.
+- **page.tsx**: Main landing page of the application.
+- **client-layout.tsx**: Client-side layout logic, handles authentication redirects and session checks.
+- **globals.css**: (If present) Global CSS for the app directory.
+- **favicon.ico**: Application favicon.
+- **_shared/**: Shared components or layouts used across multiple routes.
+  - **ClientLayout.tsx**: Shared client-side layout logic for authentication/session management.
+- **auth/**: Authentication-related routes and logic.
+  - **callback/route.ts**: Handles authentication callbacks (e.g., OAuth redirects).
+- **fonts/**: (If present) Font files for use in the app directory (should be in public/fonts for production).
+- **login/**: Login page and related logic.
+  - **page.tsx**: Login page component.
+
+#### components/
+- **Auth.tsx**: Authentication form/component for login/signup.
+- **MobileNav.tsx**: Mobile navigation component.
+- **Toast.tsx**: Toast notification component for user feedback.
+
+#### lib/
+- **supabase.js**: Supabase client setup for database and authentication operations.
+
+#### public/
+- **fonts/**: Static font files served by Next.js (should be referenced in your font loader).
+
+#### styles/
+- **globals.css**: Global CSS styles for the application, imported in the root layout.
+
+---
+
+## Notes
+- All configuration files are at the root for compatibility with Next.js and build tools.
+- Static assets (fonts) should be referenced from the `public/fonts/` directory.
+- The `app/` directory uses the Next.js App Router for routing and layouts.
+- The `lib/` directory is for utilities and API clients (e.g., Supabase).
+- The `components/` directory contains reusable UI components.
+
+---
+
+## Getting Started
+1. Install dependencies: `npm install`
+2. Add your Supabase credentials to a `.env.local` file:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+3. Run the development server: `npm run dev`
+
+---
+
+For more details, see the comments in each file or folder.
