@@ -1,9 +1,5 @@
 <!-- filepath: c:\Users\eduar\Desktop\Projects_VSC\todo-list-ap\README.md -->
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/LikeMyCoffe/todo-list-ap/main/public/favicon.ico" width="64" alt="To-do List Logo" />
-</p>
-
 <h1 align="center">📝 To-do List Application</h1>
 
 <p align="center">
