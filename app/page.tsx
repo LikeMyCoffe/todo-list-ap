@@ -33,6 +33,27 @@ export default function Home() {
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+  // Search/filter state for left section
+  const [searchQuery, setSearchQuery] = useState('');
+  const [taskFilter, setTaskFilter] = useState<'all' | 'today' | 'upcoming'>('today');
+
+  // Filtered tasks for main section
+  const filteredTasks = tasks.filter(task => {
+    // Filter by search query (from left panel)
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    // Filter by taskFilter (from left panel)
+    if (taskFilter === 'today') {
+      // Only tasks due today
+      const today = new Date().toISOString().split('T')[0];
+      return matchesSearch && task.due_date && new Date(task.due_date).toISOString().split('T')[0] === today;
+    } else if (taskFilter === 'upcoming') {
+      // Tasks due after today
+      const today = new Date().toISOString().split('T')[0];
+      return matchesSearch && task.due_date && new Date(task.due_date).toISOString().split('T')[0] > today;
+    }
+    return matchesSearch;
+  });
+
   // Check authentication status on component mount
   useEffect(() => {
     const checkUser = async () => {
@@ -279,7 +300,13 @@ return (
       <div className="mb-4">
         <h2 className="text-lg font-semibold">Menu</h2>
         <div className="relative">
-          <input type="search" placeholder="Search" className="w-full p-2 border rounded pl-8 bg-gray-50" />
+          <input
+            type="search"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full p-2 border rounded pl-8 bg-gray-50"
+          />
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -289,11 +316,14 @@ return (
       <div>
         <h3 className="text-sm font-semibold mb-2">Tasks</h3>
         <ul>
-          <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center justify-between">
-            <span className="text-gray-500">»</span> Upcoming <span className="text-gray-400 text-xs ml-1">12</span>
+          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'upcoming' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('upcoming')}>
+            <span className="text-gray-500">»</span> Upcoming <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] > new Date().toISOString().split('T')[0]).length}</span>
           </li>
-          <li className="py-2 cursor-pointer bg-gray-100 rounded-md px-2 flex items-center justify-between">
-            <span className="text-gray-500">»</span> Today <span className="text-gray-400 text-xs ml-1">{tasks.length}</span>
+          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'today' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('today')}>
+            <span className="text-gray-500">»</span> Today <span className="text-gray-400 text-xs ml-1">{tasks.filter(task => task.due_date && new Date(task.due_date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0]).length}</span>
+          </li>
+          <li className={`py-2 cursor-pointer rounded-md px-2 flex items-center justify-between ${taskFilter === 'all' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`} onClick={() => setTaskFilter('all')}>
+            <span className="text-gray-500">»</span> All <span className="text-gray-400 text-xs ml-1">{tasks.length}</span>
           </li>
           <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
             Calendar
@@ -369,11 +399,11 @@ return (
       <section className="task-list">
         {tasksLoading ? (
           <div className="text-center py-4">Loading tasks...</div>
-        ) : tasks.length === 0 ? (
+        ) : filteredTasks.length === 0 ? (
           <div className="text-center py-4 text-gray-500">No tasks yet. Add your first task!</div>
         ) : (
           <ul>
-            {tasks.map(task => (
+            {filteredTasks.map(task => (
               <li
                 key={task.id}
                 onClick={() => handleTaskClick(task.id)}
@@ -427,6 +457,7 @@ return (
       ${selectedTask ? 'fixed inset-0 z-30 bg-white p-4 md:static md:inset-auto' : 'hidden'}
       md:block md:w-96 md:bg-gray-50 md:shadow-md md:rounded-l-lg md:p-4 md:border-l md:border-gray-200
     `}>
+      {/* Only task details or prompt, no search/filter here */}
       {selectedTask ? (
         <>
           <div className="flex items-center justify-between mb-4">
