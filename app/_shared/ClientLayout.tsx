@@ -24,14 +24,14 @@ export default function ClientLayout({
         } else if (!session?.user && !isAuthPage) {
           router.push('/login');
         }
-      } catch (error) {
-        // handle error
+      } catch {
+        // error intentionally ignored
       }
     };
     checkSession();
     // Set up auth state change listener
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
-      (event, session) => {
+      (event) => {
         const isAuthPage = pathname === '/login';
         if (event === 'SIGNED_IN') {
           if (isAuthPage) router.push('/');
