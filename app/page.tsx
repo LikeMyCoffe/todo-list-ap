@@ -54,7 +54,6 @@ export default function Home() {
     acc[listName]++;
     return acc;
   }, {} as Record<string, number>);
-  const listNames = Object.keys(listsWithCounts);
 
   // 2. Lists state from Supabase
   const [dbLists, setDbLists] = useState<List[]>([]);
@@ -541,10 +540,12 @@ export default function Home() {
         onListSelect={id => setSelectedList(id)}
         selectedListId={selectedList}
         filters={filters}
-        onFilterSelect={id => setTaskFilter(id as any)}
+        onFilterSelect={(id: string) => {
+          if (id === 'all' || id === 'today' || id === 'upcoming') setTaskFilter(id);
+        }}
         selectedFilterId={taskFilter}
         tags={tags}
-        onTagSelect={id => {}}
+        onTagSelect={() => {}}
         onAddList={() => {}}
         onAddTag={() => {}}
         onRemoveList={handleRemoveList}
@@ -803,7 +804,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Toast notifications */}
+      {/* Toast notification */}
       {toast && (
         <Toast
           message={toast.message}

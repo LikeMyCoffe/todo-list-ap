@@ -3,23 +3,6 @@
 
 import React, { useState } from 'react';
 
-interface List {
-  id: string;
-  name: string;
-  color: string;
-  count: number;
-}
-
-interface Filter {
-  id: string;
-  label: string;
-}
-
-interface Tag {
-  id: string;
-  label: string;
-}
-
 interface MobileNavProps {
   onSignOut: () => void;
   isSigningOut: boolean;
