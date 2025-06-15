@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import ClientLayout from './_shared/ClientLayout';
+import ClientLayout from './client-layout';
 
 // Update the font paths with explicit relative paths
 const geistSans = localFont({
