@@ -3,12 +3,54 @@
 
 import React, { useState } from 'react';
 
+interface List {
+  id: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
+interface Filter {
+  id: string;
+  label: string;
+}
+
+interface Tag {
+  id: string;
+  label: string;
+}
+
 interface MobileNavProps {
   onSignOut: () => void;
   isSigningOut: boolean;
+  lists: Array<{ id: string; name: string; color: string; count: number }>;
+  onListSelect: (listId: string | null) => void;
+  selectedListId: string | null;
+  filters: Array<{ id: string; label: string }>;
+  onFilterSelect: (filterId: string) => void;
+  selectedFilterId: string;
+  tags: Array<{ id: string; label: string }>;
+  onTagSelect: (tagId: string) => void;
+  onAddList: () => void;
+  onAddTag: () => void;
+  onRemoveList: (listId: string) => void;
 }
 
-const MobileNav: React.FC<MobileNavProps> = ({ onSignOut, isSigningOut }) => {
+const MobileNav: React.FC<MobileNavProps> = ({
+  onSignOut,
+  isSigningOut,
+  lists,
+  onListSelect,
+  selectedListId,
+  filters,
+  onFilterSelect,
+  selectedFilterId,
+  tags,
+  onTagSelect,
+  onAddList,
+  onAddTag,
+  onRemoveList,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -32,7 +74,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ onSignOut, isSigningOut }) => {
 
       {/* Mobile menu panel */}
       {isOpen && (
-        <div className="fixed inset-0 z-40 bg-white p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-40 bg-white p-4 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Menu</h2>
             <button
@@ -46,6 +88,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ onSignOut, isSigningOut }) => {
             </button>
           </div>
 
+          {/* Filters/Search */}
           <div className="relative mb-4">
             <input type="search" placeholder="Search" className="w-full p-2 border rounded pl-8 bg-gray-50" />
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,40 +96,78 @@ const MobileNav: React.FC<MobileNavProps> = ({ onSignOut, isSigningOut }) => {
             </svg>
           </div>
 
+          {/* Filters Section */}
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">Tasks</h3>
             <ul>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Upcoming</li>
-              <li className="py-2 cursor-pointer bg-gray-100 rounded-md px-2">Today</li>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Calendar</li>
+              {filters.map((filter) => (
+                <li
+                  key={filter.id}
+                  className={`py-2 cursor-pointer rounded-md px-2 ${selectedFilterId === filter.id ? 'bg-gray-100 font-semibold' : 'hover:bg-gray-100'}`}
+                  onClick={() => onFilterSelect(filter.id)}
+                >
+                  {filter.label}
+                </li>
+              ))}
             </ul>
           </div>
 
+          {/* Lists Section */}
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">Lists</h3>
             <ul>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-                <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Personal
+              {lists.map((list) => (
+                <li
+                  key={list.id}
+                  className={`py-2 cursor-pointer rounded-md px-2 flex items-center group transition-colors duration-150 ${selectedListId === list.id ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
+                  onClick={() => onListSelect(list.id)}
+                >
+                  <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: list.color }}></span>
+                  {list.name}
+                  <span className="ml-auto text-xs text-gray-200 group-hover:text-gray-400">{list.count}</span>
+                  <button
+                    className={`ml-2 p-1 rounded hover:bg-red-100 ${selectedListId === list.id ? 'text-white hover:text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                    onClick={e => { e.stopPropagation(); onRemoveList(list.id); }}
+                    aria-label="Delete list"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </li>
+              ))}
+              <li
+                className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2"
+                onClick={onAddList}
+              >
+                + Add New List
               </li>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-                <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> Work
-              </li>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-                <span className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> List 1
-              </li>
-              <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">+ Add New List</li>
             </ul>
           </div>
 
+          {/* Tags Section */}
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">Tags</h3>
             <div className="flex flex-wrap gap-2">
-              <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 1</span>
-              <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 2</span>
-              <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">+ Add Tag</span>
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className={`bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer ${/* highlight if selected? */ ''}`}
+                  onClick={() => onTagSelect(tag.id)}
+                >
+                  {tag.label}
+                </span>
+              ))}
+              <span
+                className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer"
+                onClick={onAddTag}
+              >
+                + Add Tag
+              </span>
             </div>
           </div>
 
+          {/* Settings & Sign Out */}
           <div className="mt-auto">
             <div className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Settings</div>
             <div

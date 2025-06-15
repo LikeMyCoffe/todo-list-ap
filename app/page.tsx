@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Toast from '../components/Toast';
@@ -16,6 +16,14 @@ interface Task {
   tags?: string[];
   completed: boolean;
   created_at: string;
+}
+
+// 2. Lists state from Supabase
+interface List {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
 }
 
 export default function Home() {
@@ -39,22 +47,61 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [taskFilter, setTaskFilter] = useState<'all' | 'today' | 'upcoming'>('today');
 
-  // Filtered tasks for main section
-  const filteredTasks = tasks.filter(task => {
-    // Filter by search query (from left panel)
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    // Filter by taskFilter (from left panel)
-    if (taskFilter === 'today') {
-      // Only tasks due today
-      const today = new Date().toISOString().split('T')[0];
-      return matchesSearch && task.due_date && new Date(task.due_date).toISOString().split('T')[0] === today;
-    } else if (taskFilter === 'upcoming') {
-      // Tasks due after today
-      const today = new Date().toISOString().split('T')[0];
-      return matchesSearch && task.due_date && new Date(task.due_date).toISOString().split('T')[0] > today;
-    }
-    return matchesSearch;
-  });
+  // 1. Compute unique lists and their task counts from tasks
+  const listsWithCounts = tasks.reduce((acc, task) => {
+    const listName = task.list || 'Personal';
+    if (!acc[listName]) acc[listName] = 0;
+    acc[listName]++;
+    return acc;
+  }, {} as Record<string, number>);
+  const listNames = Object.keys(listsWithCounts);
+
+  // 2. Lists state from Supabase
+  const [dbLists, setDbLists] = useState<List[]>([]);
+  const [newListName, setNewListName] = useState('');
+  // Add selectedList state for filtering
+  const [selectedList, setSelectedList] = useState<string | null>(null);
+
+  // Fetch lists from Supabase
+  useEffect(() => {
+    const fetchLists = async () => {
+      if (user) {
+        const { data, error } = await supabase
+          .from('lists')
+          .select('*')
+          .eq('user_id', user.id);
+        if (!error && data) setDbLists(data);
+      }
+    };
+    fetchLists();
+  }, [user, supabase]);
+
+  // Helper to get all unique lists (from db and tasks)
+  const allLists = Array.from(new Set([
+    ...dbLists.map(l => l.name),
+    ...tasks.map(t => t.list || 'Personal')
+  ]));
+
+  // Map list name to color
+  const listColors: Record<string, string> = {};
+  dbLists.forEach(l => { listColors[l.name] = l.color; });
+  listColors['Personal'] = 'bg-red-500';
+  listColors['Work'] = 'bg-blue-500';
+
+  // Helper to generate a random color
+  function getRandomColor() {
+    const colors = [
+      'bg-pink-500', 'bg-purple-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 'bg-orange-500', 'bg-teal-500', 'bg-indigo-500', 'bg-rose-500', 'bg-cyan-500', 'bg-fuchsia-500', 'bg-lime-500', 'bg-amber-500', 'bg-violet-500', 'bg-emerald-500', 'bg-red-500', 'bg-sky-500', 'bg-gray-500'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // When a new list is added, assign it a random color
+  useEffect(() => {
+    // No need to setListColors here, as listColors is computed from dbLists
+    // and new lists get a color when added to Supabase
+    // This effect can be removed or left empty if you want to react to allLists changes
+  }, [allLists]);
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -226,48 +273,48 @@ export default function Home() {
     }
   };
 
-     // Update task details
-     const handleUpdateTask = async () => {
-       if (selectedTask) {
-         try {
-           // Create an update object with proper typing
-           const updateData: Record<string, unknown> = {
-             title: selectedTask.title,
-             list: selectedTask.list || 'Personal',
-             completed: selectedTask.completed
-           };
+  // Update task details
+  const handleUpdateTask = async () => {
+    if (selectedTask) {
+      try {
+        // Create an update object with proper typing
+        const updateData: Record<string, unknown> = {
+          title: selectedTask.title,
+          list: selectedTask.list || 'Personal',
+          completed: selectedTask.completed
+        };
 
-           // Only include due_date if it exists
-           if (selectedTask.due_date) {
-             updateData.due_date = selectedTask.due_date;
-           }
+        // Only include due_date if it exists
+        if (selectedTask.due_date) {
+          updateData.due_date = selectedTask.due_date;
+        }
 
-           // Only include tags if they exist
-           if (selectedTask.tags && selectedTask.tags.length > 0) {
-             updateData.tags = selectedTask.tags;
-           }
+        // Only include tags if they exist
+        if (selectedTask.tags && selectedTask.tags.length > 0) {
+          updateData.tags = selectedTask.tags;
+        }
 
-           const { error } = await supabase
-             .from('tasks')
-             .update(updateData)
-             .eq('id', selectedTask.id);
+        const { error } = await supabase
+          .from('tasks')
+          .update(updateData)
+          .eq('id', selectedTask.id);
 
-           if (error) {
-             console.error('Error updating task:', error);
-             setToast({ message: 'Failed to update task. Please try again.', type: 'error' });
-           } else {
-             // Update the task in the local state
-             setTasks(tasks.map(task =>
-               task.id === selectedTask.id ? selectedTask : task
-             ));
-             setToast({ message: 'Task updated successfully!', type: 'success' });
-           }
-         } catch (err) {
-           console.error('Exception updating task:', err);
-           setToast({ message: 'An unexpected error occurred. Please try again.', type: 'error' });
-         }
-       }
-     };
+        if (error) {
+          console.error('Error updating task:', error);
+          setToast({ message: 'Failed to update task. Please try again.', type: 'error' });
+        } else {
+          // Update the task in the local state
+          setTasks(tasks.map(task =>
+            task.id === selectedTask.id ? selectedTask : task
+          ));
+          setToast({ message: 'Task updated successfully!', type: 'success' });
+        }
+      } catch (err) {
+        console.error('Exception updating task:', err);
+        setToast({ message: 'An unexpected error occurred. Please try again.', type: 'error' });
+      }
+    }
+  };
 
   // Sign out function
   const handleSignOut = async () => {
@@ -290,11 +337,6 @@ export default function Home() {
     }
   };
 
-  // Show loading state while checking authentication
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
   // Group tasks by due date for calendar
   const tasksByDate = tasks.reduce((acc, task) => {
     if (task.due_date) {
@@ -305,10 +347,108 @@ export default function Home() {
     return acc;
   }, {} as Record<string, Task[]>);
 
+  // Filtered tasks for main section (memoized for performance)
+  const filteredTasks: Task[] = useMemo(() => {
+    return tasks.filter(task => {
+      // Filter by search query (from left panel)
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      // Filter by selected list
+      const matchesList = selectedList ? (task.list || 'Personal') === selectedList : true;
+      // Filter by taskFilter (from left panel)
+      if (taskFilter === 'today') {
+        // Only tasks due today
+        const today = new Date().toISOString().split('T')[0];
+        return matchesSearch && matchesList && task.due_date && new Date(task.due_date).toISOString().split('T')[0] === today;
+      } else if (taskFilter === 'upcoming') {
+        // Tasks due after today
+        const today = new Date().toISOString().split('T')[0];
+        return matchesSearch && matchesList && task.due_date && new Date(task.due_date).toISOString().split('T')[0] > today;
+      }
+      return matchesSearch && matchesList;
+    });
+  }, [tasks, searchQuery, selectedList, taskFilter]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  // Add new list to Supabase
+  const handleAddList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newListName || allLists.includes(newListName)) return;
+    const color = getRandomColor();
+    const { data, error } = await supabase
+      .from('lists')
+      .insert([{ name: newListName, user_id: user.id, color }])
+      .select();
+    if (!error && data && data.length > 0) {
+      setDbLists([...dbLists, data[0]]);
+      setNewListName('');
+    } else if (error) {
+      setToast({ message: 'Failed to add list: ' + error.message, type: 'error' });
+    }
+  };
+
+  // Remove list from Supabase and state
+  const handleRemoveList = async (listId: string) => {
+    if (!user) return;
+    try {
+      // Remove from Supabase
+      const { error } = await supabase
+        .from('lists')
+        .delete()
+        .eq('id', listId)
+        .eq('user_id', user.id);
+      if (error) {
+        setToast({ message: 'Failed to delete list. Please try again.', type: 'error' });
+        return;
+      }
+      // Remove from local state
+      setDbLists(dbLists.filter(l => l.id !== listId));
+      // If the deleted list was selected, reset selection
+      if (selectedList === listId) setSelectedList(null);
+      setToast({ message: 'List deleted successfully!', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'An unexpected error occurred. Please try again.', type: 'error' });
+      console.error('Exception deleting list:', err);
+    }
+  };
+
+  // Prepare lists for MobileNav (with id, name, color, count)
+  const mobileNavLists = dbLists.map(list => ({
+    id: list.id,
+    name: list.name,
+    color: list.color,
+    count: tasks.filter(t => (t.list || 'Personal') === list.name).length
+  }));
+  // Add Personal if not in dbLists
+  if (!dbLists.some(l => l.name === 'Personal')) {
+    mobileNavLists.unshift({
+      id: 'personal',
+      name: 'Personal',
+      color: 'bg-red-500',
+      count: tasks.filter(t => (t.list || 'Personal') === 'Personal').length
+    });
+  }
+
+  // Example filters and tags (replace with your logic if needed)
+  const filters = [
+    { id: 'all', label: 'All Tasks' },
+    { id: 'today', label: 'Today' },
+    { id: 'upcoming', label: 'Upcoming' },
+    { id: 'calendar', label: 'Calendar' },
+  ];
+  const tags = [
+    { id: 'tag1', label: 'Tag 1' },
+    { id: 'tag2', label: 'Tag 2' },
+  ];
+
+  // Responsive layout improvements for all devices
   return (
-    <div className="flex flex-col md:flex-row min-h-screen font-sans">
-      {/* Menu - hidden on mobile */}
-      <aside className="hidden md:block w-64 bg-white shadow-md rounded-r-lg p-4 border-r border-gray-200">
+    <div className="flex flex-col md:flex-row min-h-screen font-sans bg-background">
+      {/* Menu - hidden on mobile, collapsible on small screens */}
+      <aside className="hidden md:block w-full md:w-64 bg-white shadow-md rounded-r-lg p-4 border-r border-gray-200 md:relative fixed z-40 h-full md:h-auto overflow-y-auto">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Menu</h2>
           <div className="relative">
@@ -350,19 +490,27 @@ export default function Home() {
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Lists</h3>
           <ul>
-            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Personal <span className="text-gray-400 text-xs ml-1">3</span>
-            </li>
-            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> Work <span className="text-gray-400 text-xs ml-1">6</span>
-            </li>
-            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> List 1 <span className="text-gray-400 text-xs ml-1">3</span>
-            </li>
-            <li className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">
-              + Add New List
-            </li>
+            {allLists.map((name) => (
+              <li
+                key={name}
+                className={`py-2 cursor-pointer rounded-md px-2 flex items-center group transition-colors duration-150 ${selectedList === name ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
+                onClick={() => setSelectedList(selectedList === name ? null : name)}
+              >
+                <span className={`w-2 h-2 rounded-full mr-2 ${listColors[name] || 'bg-yellow-500'}`}></span>
+                {name} <span className="text-gray-400 text-xs ml-1">{listsWithCounts[name] || 0}</span>
+              </li>
+            ))}
           </ul>
+          <form onSubmit={handleAddList} className="flex mt-2">
+            <input
+              type="text"
+              placeholder="+ Add New List"
+              value={newListName}
+              onChange={e => setNewListName(e.target.value)}
+              className="flex-1 p-1 border rounded text-xs"
+            />
+            <button type="submit" className="ml-2 px-2 py-1 text-xs bg-green-500 text-white rounded">Add</button>
+          </form>
         </div>
 
         <div className="mt-4">
@@ -386,23 +534,37 @@ export default function Home() {
       </aside>
 
       {/* Mobile Navigation - visible only on mobile */}
-      <MobileNav onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+      <MobileNav
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+        lists={mobileNavLists}
+        onListSelect={id => setSelectedList(id)}
+        selectedListId={selectedList}
+        filters={filters}
+        onFilterSelect={id => setTaskFilter(id as any)}
+        selectedFilterId={taskFilter}
+        tags={tags}
+        onTagSelect={id => {}}
+        onAddList={() => {}}
+        onAddTag={() => {}}
+        onRemoveList={handleRemoveList}
+      />
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 overflow-y-auto">
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+      {/* Main Content - scrollable and responsive */}
+      <main className="flex-1 p-2 sm:p-4 overflow-y-auto min-h-0 bg-background">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
           <h1 className="text-2xl font-semibold mb-2 sm:mb-0">Today <span className="text-gray-500">{tasks.length}</span></h1>
-          <div className="flex w-full sm:w-auto items-center">
+          <div className="flex w-full sm:w-auto items-center gap-2">
             <input
               type="text"
               placeholder="New task title"
               value={newTaskTitle}
               onChange={handleNewTaskTitleChange}
-              className="p-2 border rounded mr-2 bg-white flex-1 sm:flex-none"
+              className="p-2 border rounded bg-white flex-1 sm:flex-none text-sm"
             />
             <button
               onClick={handleAddTask}
-              className="bg-white text-gray-700 p-2 rounded border shadow-sm hover:bg-gray-100 whitespace-nowrap"
+              className="bg-white text-gray-700 p-2 rounded border shadow-sm hover:bg-gray-100 whitespace-nowrap text-sm"
             >
               + Add Task
             </button>
@@ -420,9 +582,9 @@ export default function Home() {
                 <li
                   key={task.id}
                   onClick={() => handleTaskClick(task.id)}
-                  className="py-3 px-4 border-b flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                  className="py-3 px-2 sm:px-4 border-b flex items-center justify-between hover:bg-gray-50 cursor-pointer text-base sm:text-lg gap-2"
                 >
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     <div
                       className="mr-2 flex-shrink-0"
                       onClick={(e) => handleTaskCompletion(task.id, !task.completed, e)}
@@ -469,6 +631,7 @@ export default function Home() {
       <aside className={`
         ${selectedTask ? 'fixed inset-0 z-30 bg-white p-4 md:static md:inset-auto' : 'hidden'}
         md:block md:w-96 md:bg-gray-50 md:shadow-md md:rounded-l-lg md:p-4 md:border-l md:border-gray-200
+        max-h-screen overflow-y-auto transition-all duration-200
       `}>
         {/* Only task details or prompt, no search/filter here */}
         {selectedTask ? (
@@ -524,13 +687,12 @@ export default function Home() {
                 className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 value={selectedTask.list || 'Personal'}
                 onChange={(e) => {
-                  console.log('Changing list to:', e.target.value);
                   setSelectedTask({...selectedTask, list: e.target.value});
                 }}
               >
-                <option value="Personal">Personal</option>
-                <option value="Work">Work</option>
-                <option value="List 1">List 1</option>
+                {allLists.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
               </select>
             </div>
 
@@ -603,10 +765,10 @@ export default function Home() {
         )}
       </aside>
 
-      {/* Calendar Popup */}
+      {/* Calendar Popup - responsive */}
       {isCalendarOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl animate-fade-in">
+          <div className="relative bg-white rounded-lg shadow-lg p-2 sm:p-6 w-full max-w-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
               onClick={() => setIsCalendarOpen(false)}
