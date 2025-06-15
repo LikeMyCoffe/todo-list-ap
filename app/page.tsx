@@ -546,9 +546,17 @@ export default function Home() {
         selectedFilterId={taskFilter}
         tags={tags}
         onTagSelect={() => {}}
-        onAddList={() => {}}
-        onAddTag={() => {}}
+        onAddList={name => {
+          if (name) {
+            setNewListName(name);
+            handleAddList({ preventDefault: () => {} } as React.FormEvent);
+          }
+        }}
+        onAddTag={handleAddTag}
         onRemoveList={handleRemoveList}
+        onSearch={handleSearch}
+        searchQuery={searchQuery}
+        onCalendarOpen={handleCalendarOpen}
       />
 
       {/* Main Content - scrollable and responsive */}

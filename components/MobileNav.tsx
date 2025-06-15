@@ -14,9 +14,12 @@ interface MobileNavProps {
   selectedFilterId: string;
   tags: Array<{ id: string; label: string }>;
   onTagSelect: (tagId: string) => void;
-  onAddList: () => void;
-  onAddTag: () => void;
+  onAddList: (name?: string) => void;
+  onAddTag: (name?: string) => void;
   onRemoveList: (listId: string) => void;
+  onSearch: (query: string) => void;
+  searchQuery: string;
+  onCalendarOpen: () => void;
 }
 
 const MobileNav: React.FC<MobileNavProps> = ({
@@ -33,8 +36,15 @@ const MobileNav: React.FC<MobileNavProps> = ({
   onAddList,
   onAddTag,
   onRemoveList,
+  onSearch,
+  searchQuery,
+  onCalendarOpen,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showAddList, setShowAddList] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [showAddTag, setShowAddTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
 
   return (
     <div className="md:hidden">
@@ -71,9 +81,15 @@ const MobileNav: React.FC<MobileNavProps> = ({
             </button>
           </div>
 
-          {/* Filters/Search */}
+          {/* Search */}
           <div className="relative mb-4">
-            <input type="search" placeholder="Search" className="w-full p-2 border rounded pl-8 bg-gray-50" />
+            <input
+              type="search"
+              placeholder="Search"
+              className="w-full p-2 border rounded pl-8 bg-gray-50"
+              value={searchQuery}
+              onChange={e => onSearch(e.target.value)}
+            />
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -86,12 +102,18 @@ const MobileNav: React.FC<MobileNavProps> = ({
               {filters.map((filter) => (
                 <li
                   key={filter.id}
-                  className={`py-2 cursor-pointer rounded-md px-2 ${selectedFilterId === filter.id ? 'bg-gray-100 font-semibold' : 'hover:bg-gray-100'}`}
+                  className={`py-2 cursor-pointer rounded-md px-2 ${selectedFilterId === filter.id ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
                   onClick={() => onFilterSelect(filter.id)}
                 >
                   {filter.label}
                 </li>
               ))}
+              <li
+                className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2"
+                onClick={() => { setIsOpen(false); onCalendarOpen(); }}
+              >
+                Calendar
+              </li>
             </ul>
           </div>
 
@@ -105,7 +127,7 @@ const MobileNav: React.FC<MobileNavProps> = ({
                   className={`py-2 cursor-pointer rounded-md px-2 flex items-center group transition-colors duration-150 ${selectedListId === list.id ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
                   onClick={() => onListSelect(list.id)}
                 >
-                  <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: list.color }}></span>
+                  <span className={`w-2 h-2 rounded-full mr-2 ${list.color}`}></span>
                   {list.name}
                   <span className="ml-auto text-xs text-gray-200 group-hover:text-gray-400">{list.count}</span>
                   <button
@@ -121,11 +143,34 @@ const MobileNav: React.FC<MobileNavProps> = ({
               ))}
               <li
                 className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2"
-                onClick={onAddList}
+                onClick={() => setShowAddList(true)}
               >
                 + Add New List
               </li>
             </ul>
+            {/* Add List Modal */}
+            {showAddList && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white rounded-lg shadow-lg p-4 w-full max-w-xs">
+                  <h4 className="font-semibold mb-2">Add New List</h4>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded mb-2"
+                    placeholder="List name"
+                    value={newListName}
+                    onChange={e => setNewListName(e.target.value)}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button className="px-3 py-1 rounded bg-gray-200" onClick={() => setShowAddList(false)}>Cancel</button>
+                    <button
+                      className="px-3 py-1 rounded bg-green-500 text-white"
+                      onClick={() => { onAddList(newListName); setNewListName(''); setShowAddList(false); }}
+                      disabled={!newListName.trim()}
+                    >Add</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tags Section */}
@@ -135,7 +180,7 @@ const MobileNav: React.FC<MobileNavProps> = ({
               {tags.map((tag) => (
                 <span
                   key={tag.id}
-                  className={`bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer ${/* highlight if selected? */ ''}`}
+                  className={`bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer`}
                   onClick={() => onTagSelect(tag.id)}
                 >
                   {tag.label}
@@ -143,11 +188,34 @@ const MobileNav: React.FC<MobileNavProps> = ({
               ))}
               <span
                 className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer"
-                onClick={onAddTag}
+                onClick={() => setShowAddTag(true)}
               >
                 + Add Tag
               </span>
             </div>
+            {/* Add Tag Modal */}
+            {showAddTag && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white rounded-lg shadow-lg p-4 w-full max-w-xs">
+                  <h4 className="font-semibold mb-2">Add New Tag</h4>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded mb-2"
+                    placeholder="Tag name"
+                    value={newTagName}
+                    onChange={e => setNewTagName(e.target.value)}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button className="px-3 py-1 rounded bg-gray-200" onClick={() => setShowAddTag(false)}>Cancel</button>
+                    <button
+                      className="px-3 py-1 rounded bg-green-500 text-white"
+                      onClick={() => { onAddTag(newTagName); setNewTagName(''); setShowAddTag(false); }}
+                      disabled={!newTagName.trim()}
+                    >Add</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Settings & Sign Out */}
