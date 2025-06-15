@@ -443,6 +443,20 @@ export default function Home() {
     { id: 'tag2', label: 'Tag 2' },
   ];
 
+  // Add new tag (for demo, just toast)
+  const handleAddTag = (name?: string) => {
+    if (name && !tags.some(t => t.label === name)) {
+      setToast({ message: `Tag '${name}' added!`, type: 'success' });
+      // You can implement tag persistence here
+    }
+  };
+
+  // Search handler for mobile nav
+  const handleSearch = (query: string) => setSearchQuery(query);
+
+  // Calendar open handler for mobile nav
+  const handleCalendarOpen = () => setIsCalendarOpen(true);
+
   // Responsive layout improvements for all devices
   return (
     <div className="flex flex-col md:flex-row min-h-screen font-sans bg-background">
@@ -545,11 +559,22 @@ export default function Home() {
         }}
         selectedFilterId={taskFilter}
         tags={tags}
-        onTagSelect={() => {}}
-        onAddList={name => {
-          if (name) {
-            setNewListName(name);
-            handleAddList({ preventDefault: () => {} } as React.FormEvent);
+        onTagSelect={id => {
+          // Example: set a selectedTag state or filter tasks by tag if needed
+          setToast({ message: `Tag '${id}' selected!`, type: 'info' });
+        }}
+        onAddList={async name => {
+          if (!user || !name || allLists.includes(name)) return;
+          const color = getRandomColor();
+          const { data, error } = await supabase
+            .from('lists')
+            .insert([{ name, user_id: user.id, color }])
+            .select();
+          if (!error && data && data.length > 0) {
+            setDbLists([...dbLists, data[0]]);
+            setToast({ message: `List '${name}' added!`, type: 'success' });
+          } else if (error) {
+            setToast({ message: 'Failed to add list: ' + error.message, type: 'error' });
           }
         }}
         onAddTag={handleAddTag}
@@ -662,7 +687,7 @@ export default function Home() {
                   ) : (
                     <div className="flex items-center text-gray-500">
                       <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22a10 10 0 100-20 10 10 0 000 20z" />
                       </svg>
                       <span>Mark as completed</span>
                     </div>
