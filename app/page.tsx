@@ -5,7 +5,6 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Toast from '../components/Toast';
 import { User } from '@supabase/supabase-js';
-import MobileNav from '../components/MobileNav';
 
 interface Task {
   id: string; // UUID
@@ -414,23 +413,6 @@ export default function Home() {
     }
   };
 
-  // Prepare lists for MobileNav (with id, name, color, count)
-  const mobileNavLists = dbLists.map(list => ({
-    id: list.id,
-    name: list.name,
-    color: list.color,
-    count: tasks.filter(t => (t.list || 'Personal') === list.name).length
-  }));
-  // Add Personal if not in dbLists
-  if (!dbLists.some(l => l.name === 'Personal')) {
-    mobileNavLists.unshift({
-      id: 'personal',
-      name: 'Personal',
-      color: 'bg-red-500',
-      count: tasks.filter(t => (t.list || 'Personal') === 'Personal').length
-    });
-  }
-
   // Example filters and tags (replace with your logic if needed)
   const filters = [
     { id: 'all', label: 'All Tasks' },
@@ -545,44 +527,6 @@ export default function Home() {
           </div>
         </div>
       </aside>
-
-      {/* Mobile Navigation - visible only on mobile */}
-      <MobileNav
-        onSignOut={handleSignOut}
-        isSigningOut={isSigningOut}
-        lists={mobileNavLists}
-        onListSelect={id => setSelectedList(id)}
-        selectedListId={selectedList}
-        filters={filters}
-        onFilterSelect={(id: string) => {
-          if (id === 'all' || id === 'today' || id === 'upcoming') setTaskFilter(id);
-        }}
-        selectedFilterId={taskFilter}
-        tags={tags}
-        onTagSelect={id => {
-          // Example: set a selectedTag state or filter tasks by tag if needed
-          setToast({ message: `Tag '${id}' selected!`, type: 'info' });
-        }}
-        onAddList={async name => {
-          if (!user || !name || allLists.includes(name)) return;
-          const color = getRandomColor();
-          const { data, error } = await supabase
-            .from('lists')
-            .insert([{ name, user_id: user.id, color }])
-            .select();
-          if (!error && data && data.length > 0) {
-            setDbLists([...dbLists, data[0]]);
-            setToast({ message: `List '${name}' added!`, type: 'success' });
-          } else if (error) {
-            setToast({ message: 'Failed to add list: ' + error.message, type: 'error' });
-          }
-        }}
-        onAddTag={handleAddTag}
-        onRemoveList={handleRemoveList}
-        onSearch={handleSearch}
-        searchQuery={searchQuery}
-        onCalendarOpen={handleCalendarOpen}
-      />
 
       {/* Main Content - scrollable and responsive */}
       <main className="flex-1 p-2 sm:p-4 overflow-y-auto min-h-0 bg-background">
