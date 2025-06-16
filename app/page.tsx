@@ -437,7 +437,7 @@ export default function Home() {
               type="search"
               placeholder="Search"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
               className="w-full p-2 border rounded pl-8 bg-gray-50"
             />
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -461,7 +461,7 @@ export default function Home() {
             <li
               ref={calendarButtonRef}
               className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2"
-              onClick={() => setIsCalendarOpen((open) => !open)}
+              onClick={handleCalendarOpen}
             >
               Calendar
             </li>
