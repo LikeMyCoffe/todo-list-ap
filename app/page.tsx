@@ -508,6 +508,21 @@ export default function Home() {
 
         {/* REMOVE: Tags section */}
         {/* REMOVE: Settings button */}
+
+        {user && (
+          <button
+            className="mt-6 w-full flex items-center justify-center gap-2 bg-red-500 text-white py-2 rounded shadow hover:bg-red-600 transition-colors font-semibold"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/login');
+            }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+            </svg>
+            Sign Out
+          </button>
+        )}
       </aside>
 
       {/* Main Content - scrollable and responsive */}
@@ -764,14 +779,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      {/* Toast notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 }
+
