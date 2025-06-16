@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 
 export default function Auth() {
+  // State for form fields, loading, error, and view (sign-in/sign-up)
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +14,7 @@ export default function Auth() {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
+  // Handle user sign-up with Supabase
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -41,6 +43,7 @@ export default function Auth() {
     }
   };
 
+  // Handle user sign-in with Supabase
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -56,6 +59,7 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
+        // On successful sign-in, redirect to home
         console.log("Sign in successful:", data.session ? "Has session" : "No session");
         router.push('/');
         router.refresh();
@@ -69,6 +73,7 @@ export default function Auth() {
     }
   };
 
+  // Render authentication form and handle view switching
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">

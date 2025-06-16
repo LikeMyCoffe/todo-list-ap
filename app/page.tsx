@@ -25,6 +25,13 @@ interface List {
   color: string;
 }
 
+// Map list id to color
+const listColors: Record<string, string> = {
+  Personal: 'bg-red-500',
+  Work: 'bg-blue-500',
+  // Add other default colors here
+};
+
 export default function Home() {
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -57,8 +64,9 @@ export default function Home() {
   // 2. Lists state from Supabase
   const [dbLists, setDbLists] = useState<List[]>([]);
   const [newListName, setNewListName] = useState('');
-  // Add selectedList state for filtering
+  // Change selectedList to store the list ID (string | null)
   const [selectedList, setSelectedList] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch lists from Supabase
   useEffect(() => {
@@ -75,16 +83,18 @@ export default function Home() {
   }, [user, supabase]);
 
   // Helper to get all unique lists (from db and tasks)
-  const allLists = Array.from(new Set([
-    ...dbLists.map(l => l.name),
-    ...tasks.map(t => t.list || 'Personal')
-  ]));
-
-  // Map list name to color
-  const listColors: Record<string, string> = {};
-  dbLists.forEach(l => { listColors[l.name] = l.color; });
-  listColors['Personal'] = 'bg-red-500';
-  listColors['Work'] = 'bg-blue-500';
+  const allLists = useMemo(() => {
+    // Always include Personal as a default list
+    const dbListNames = dbLists.map(l => l.name);
+    const taskListNames = tasks.map(t => t.list || 'Personal');
+    const uniqueNames = Array.from(new Set([...dbListNames, ...taskListNames]));
+    return uniqueNames.map(name => {
+      const dbList = dbLists.find(l => l.name === name);
+      return dbList
+        ? { id: dbList.id, name: dbList.name, color: dbList.color }
+        : { id: name, name, color: listColors[name] || 'bg-yellow-500' }; // fallback for Personal
+    });
+  }, [dbLists, tasks]);
 
   // Helper to generate a random color
   function getRandomColor() {
@@ -95,11 +105,7 @@ export default function Home() {
   }
 
   // When a new list is added, assign it a random color
-  useEffect(() => {
-    // No need to setListColors here, as listColors is computed from dbLists
-    // and new lists get a color when added to Supabase
-    // This effect can be removed or left empty if you want to react to allLists changes
-  }, [allLists]);
+  useEffect(() => {}, [allLists]);
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -351,7 +357,12 @@ export default function Home() {
       // Filter by search query (from left panel)
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
       // Filter by selected list
-      const matchesList = selectedList ? (task.list || 'Personal') === selectedList : true;
+      const dbList = dbLists.find(l => l.id === selectedList);
+      const matchesList = selectedList
+        ? (dbList
+            ? (task.list || 'Personal') === dbList.name
+            : selectedList === 'Personal' && (!task.list || task.list === 'Personal'))
+        : true;
       // Filter by taskFilter (from left panel)
       if (taskFilter === 'today') {
         // Only tasks due today
@@ -364,7 +375,7 @@ export default function Home() {
       }
       return matchesSearch && matchesList;
     });
-  }, [tasks, searchQuery, selectedList, taskFilter]);
+  }, [tasks, searchQuery, selectedList, taskFilter, dbLists]);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -374,7 +385,7 @@ export default function Home() {
   // Add new list to Supabase
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newListName || allLists.includes(newListName)) return;
+    if (!user || !newListName || allLists.some(l => l.name === newListName)) return;
     const color = getRandomColor();
     const { data, error } = await supabase
       .from('lists')
@@ -412,6 +423,23 @@ export default function Home() {
       console.error('Exception deleting list:', err);
     }
   };
+
+  // Prepare lists for MobileNav (with id, name, color, count)
+  const mobileNavLists = dbLists.map(list => ({
+    id: list.id,
+    name: list.name,
+    color: list.color,
+    count: tasks.filter(t => (t.list || 'Personal') === list.name).length
+  }));
+  // Add Personal if not in dbLists
+  if (!dbLists.some(l => l.name === 'Personal')) {
+    mobileNavLists.unshift({
+      id: 'personal',
+      name: 'Personal',
+      color: 'bg-red-500',
+      count: tasks.filter(t => (t.list || 'Personal') === 'Personal').length
+    });
+  }
 
   // Example filters and tags (replace with your logic if needed)
   const filters = [
@@ -485,14 +513,26 @@ export default function Home() {
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Lists</h3>
           <ul>
-            {allLists.map((name) => (
+            {allLists.map((list) => (
               <li
-                key={name}
-                className={`py-2 cursor-pointer rounded-md px-2 flex items-center group transition-colors duration-150 ${selectedList === name ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
-                onClick={() => setSelectedList(selectedList === name ? null : name)}
+                key={list.id}
+                className={`py-2 cursor-pointer rounded-md px-2 flex items-center group transition-colors duration-150 ${selectedList === list.id ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
+                onClick={() => setSelectedList(selectedList === list.id ? null : list.id)}
               >
-                <span className={`w-2 h-2 rounded-full mr-2 ${listColors[name] || 'bg-yellow-500'}`}></span>
-                {name} <span className="text-gray-400 text-xs ml-1">{listsWithCounts[name] || 0}</span>
+                <span className={`w-2 h-2 rounded-full mr-2 ${list.color || 'bg-yellow-500'}`}></span>
+                {list.name} <span className="text-gray-400 text-xs ml-1">{listsWithCounts[list.name] || 0}</span>
+                {selectedList === list.id && (
+                  <button
+                    className="ml-2 text-red-500 hover:text-red-700"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setShowDeleteConfirm(true);
+                    }}
+                    title="Delete list"
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -508,24 +548,8 @@ export default function Home() {
           </form>
         </div>
 
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold mb-2">Tags</h3>
-          <div className="flex gap-2">
-            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 1</span>
-            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">Tag 2</span>
-            <span className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer">+ Add Tag</span>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <div className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2">Settings</div>
-          <div
-            className="py-2 cursor-pointer hover:bg-gray-100 rounded-md px-2 text-red-500"
-            onClick={handleSignOut}
-          >
-            {isSigningOut ? 'Signing out...' : 'Sign out'}
-          </div>
-        </div>
+        {/* REMOVE: Tags section */}
+        {/* REMOVE: Settings button */}
       </aside>
 
       {/* Main Content - scrollable and responsive */}
@@ -668,8 +692,8 @@ export default function Home() {
                   setSelectedTask({...selectedTask, list: e.target.value});
                 }}
               >
-                {allLists.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                {allLists.map((list) => (
+                  <option key={list.id} value={list.name}>{list.name}</option>
                 ))}
               </select>
             </div>
@@ -688,40 +712,7 @@ export default function Home() {
               />
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Tags</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {selectedTask && selectedTask.tags && selectedTask.tags.map((tag, index) => (
-                  <span key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
-                    {tag}
-                    <button
-                      className="ml-1 text-gray-500 hover:text-gray-700"
-                      onClick={() => {
-                        const newTags = [...(selectedTask.tags || [])];
-                        newTags.splice(index, 1);
-                        setSelectedTask({...selectedTask, tags: newTags});
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <button
-                  className="bg-gray-200 rounded-full px-2 py-1 text-xs cursor-pointer"
-                  onClick={() => {
-                    const tag = prompt('Enter tag name:');
-                    if (tag) {
-                      setSelectedTask({
-                        ...selectedTask,
-                        tags: [...(selectedTask.tags || []), tag]
-                      });
-                    }
-                  }}
-                >
-                  + Add Tag
-                </button>
-              </div>
-            </div>
+            {/* REMOVE: Tags section from task details */}
 
             <div className="flex justify-between mt-4">
               <button
@@ -781,6 +772,40 @@ export default function Home() {
         </div>
       )}
 
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirmation dialog for deleting list */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <div className="bg-white p-6 rounded shadow-lg">
+            <p>Are you sure you want to delete this list?</p>
+            <div className="flex justify-end mt-4">
+              <button
+                className="mr-2 px-4 py-2 bg-gray-200 rounded"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded"
+                onClick={() => {
+                  handleRemoveList(selectedList!);
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toast notification */}
       {toast && (
         <Toast
