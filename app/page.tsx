@@ -35,7 +35,6 @@ const listColors: Record<string, string> = {
 export default function Home() {
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -320,27 +319,6 @@ export default function Home() {
     }
   };
 
-  // Sign out function
-  const handleSignOut = async () => {
-    try {
-      setIsSigningOut(true);
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        console.error('Error signing out:', error.message);
-        setToast({ message: 'Failed to sign out. Please try again.', type: 'error' });
-      } else {
-        // Redirect to login page after successful sign out
-        router.push('/login');
-      }
-    } catch (err) {
-      console.error('Exception during sign out:', err);
-      alert('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
-
   // Group tasks by due date for calendar
   const tasksByDate = tasks.reduce((acc, task) => {
     if (task.due_date) {
@@ -440,26 +418,6 @@ export default function Home() {
       count: tasks.filter(t => (t.list || 'Personal') === 'Personal').length
     });
   }
-
-  // Example filters and tags (replace with your logic if needed)
-  const filters = [
-    { id: 'all', label: 'All Tasks' },
-    { id: 'today', label: 'Today' },
-    { id: 'upcoming', label: 'Upcoming' },
-    { id: 'calendar', label: 'Calendar' },
-  ];
-  const tags = [
-    { id: 'tag1', label: 'Tag 1' },
-    { id: 'tag2', label: 'Tag 2' },
-  ];
-
-  // Add new tag (for demo, just toast)
-  const handleAddTag = (name?: string) => {
-    if (name && !tags.some(t => t.label === name)) {
-      setToast({ message: `Tag '${name}' added!`, type: 'success' });
-      // You can implement tag persistence here
-    }
-  };
 
   // Search handler for mobile nav
   const handleSearch = (query: string) => setSearchQuery(query);
