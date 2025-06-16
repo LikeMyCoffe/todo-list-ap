@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Toast from '../components/Toast';
 import { User } from '@supabase/supabase-js';
 
+// Task interface for type safety and clarity
 interface Task {
   id: string; // UUID
   user_id: string;
@@ -17,7 +18,7 @@ interface Task {
   created_at: string;
 }
 
-// 2. Lists state from Supabase
+// List interface for type safety and clarity
 interface List {
   id: string;
   user_id: string;
@@ -25,7 +26,7 @@ interface List {
   color: string;
 }
 
-// Map list id to color
+// Map list id to color for UI display
 const listColors: Record<string, string> = {
   Personal: 'bg-red-500',
   Work: 'bg-blue-500',
@@ -33,8 +34,11 @@ const listColors: Record<string, string> = {
 };
 
 export default function Home() {
+  // Router and Supabase client initialization
   const router = useRouter();
   const supabase = createClientComponentClient();
+
+  // State for user authentication and loading
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -42,17 +46,18 @@ export default function Home() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarButtonRef = useRef<HTMLLIElement>(null);
 
-  // Updated tasks state
+  // State for tasks and UI
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  // Search/filter state for left section
+  // State for search and filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [taskFilter, setTaskFilter] = useState<'all' | 'today' | 'upcoming'>('today');
 
-  // 1. Compute unique lists and their task counts from tasks
+  // Compute unique lists and their task counts from tasks
+  // Used for displaying list counts in the UI
   const listsWithCounts = tasks.reduce((acc, task) => {
     const listName = task.list || 'Personal';
     if (!acc[listName]) acc[listName] = 0;
@@ -60,14 +65,13 @@ export default function Home() {
     return acc;
   }, {} as Record<string, number>);
 
-  // 2. Lists state from Supabase
+  // State for lists from Supabase and related UI
   const [dbLists, setDbLists] = useState<List[]>([]);
   const [newListName, setNewListName] = useState('');
-  // Change selectedList to store the list ID (string | null)
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Fetch lists from Supabase
+  // Fetch lists from Supabase for the current user
   useEffect(() => {
     const fetchLists = async () => {
       if (user) {
@@ -81,7 +85,7 @@ export default function Home() {
     fetchLists();
   }, [user, supabase]);
 
-  // Helper to get all unique lists (from db and tasks)
+  // Compute all unique lists (from db and tasks) for UI display
   const allLists = useMemo(() => {
     // Always include Personal as a default list
     const dbListNames = dbLists.map(l => l.name);
@@ -95,7 +99,7 @@ export default function Home() {
     });
   }, [dbLists, tasks]);
 
-  // Helper to generate a random color
+  // Helper to generate a random color for new lists
   function getRandomColor() {
     const colors = [
       'bg-pink-500', 'bg-purple-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 'bg-orange-500', 'bg-teal-500', 'bg-indigo-500', 'bg-rose-500', 'bg-cyan-500', 'bg-fuchsia-500', 'bg-lime-500', 'bg-amber-500', 'bg-violet-500', 'bg-emerald-500', 'bg-red-500', 'bg-sky-500', 'bg-gray-500'
@@ -103,10 +107,10 @@ export default function Home() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // When a new list is added, assign it a random color
+  // Placeholder effect for when a new list is added (currently unused)
   useEffect(() => {}, [allLists]);
 
-  // Check authentication status on component mount
+  // Check authentication status on component mount and set up auth state listener
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -126,7 +130,7 @@ export default function Home() {
 
     checkUser();
 
-    // Set up auth state listener
+    // Set up auth state listener to handle sign in/out events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user || null);
@@ -172,16 +176,17 @@ export default function Home() {
     }
   }, [user, supabase]);
 
-  // Task management functions
+  // Select a task for viewing/editing details
   const handleTaskClick = (taskId: string) => {
     setSelectedTask(tasks.find(task => task.id === taskId) || null);
   };
 
+  // Update new task title as user types
   const handleNewTaskTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewTaskTitle(event.target.value);
   };
 
-  // Add task to Supabase
+  // Add a new task to Supabase and update local state
   const handleAddTask = async () => {
     if (newTaskTitle.trim() !== '' && user) {
       try {
@@ -213,7 +218,7 @@ export default function Home() {
     }
   };
 
-  // Delete task from Supabase
+  // Delete the selected task from Supabase and update local state
   const handleDeleteTask = async () => {
     if (selectedTask) {
       try {
@@ -237,7 +242,7 @@ export default function Home() {
     }
   };
 
-  // Toggle task completion status
+  // Toggle completion status of a task and update Supabase/local state
   const handleTaskCompletion = async (taskId: string, isCompleted: boolean, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent task selection when clicking checkbox
 
@@ -276,7 +281,7 @@ export default function Home() {
     }
   };
 
-  // Update task details
+  // Update details of the selected task in Supabase and local state
   const handleUpdateTask = async () => {
     if (selectedTask) {
       try {
@@ -319,7 +324,7 @@ export default function Home() {
     }
   };
 
-  // Group tasks by due date for calendar
+  // Group tasks by due date for calendar display
   const tasksByDate = tasks.reduce((acc, task) => {
     if (task.due_date) {
       const dateKey = new Date(task.due_date).toISOString().split('T')[0];
@@ -329,7 +334,7 @@ export default function Home() {
     return acc;
   }, {} as Record<string, Task[]>);
 
-  // Filtered tasks for main section (memoized for performance)
+  // Filter tasks for main section based on search, list, and filter
   const filteredTasks: Task[] = useMemo(() => {
     return tasks.filter(task => {
       // Filter by search query (from left panel)
@@ -360,7 +365,7 @@ export default function Home() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // Add new list to Supabase
+  // Add a new list to Supabase and update local state
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newListName || allLists.some(l => l.name === newListName)) return;
@@ -377,7 +382,7 @@ export default function Home() {
     }
   };
 
-  // Remove list from Supabase and state
+  // Remove a list from Supabase and update local state
   const handleRemoveList = async (listId: string) => {
     if (!user) return;
     try {
@@ -419,13 +424,13 @@ export default function Home() {
     });
   }
 
-  // Search handler for mobile nav
+  // Handler for search input (used in sidebar)
   const handleSearch = (query: string) => setSearchQuery(query);
 
-  // Calendar open handler for mobile nav
+  // Handler to open the calendar popup
   const handleCalendarOpen = () => setIsCalendarOpen(true);
 
-  // Responsive layout improvements for all devices
+  // Main render for the Home page, including sidebar, main content, and overlays
   return (
     <div className="flex flex-col md:flex-row min-h-screen font-sans bg-background">
       {/* Menu - hidden on mobile, collapsible on small screens */}
