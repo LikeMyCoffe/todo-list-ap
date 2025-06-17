@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Set default font and background color for sticky notes look */
+/* Set default font and background color*/
 body {
   font-family: sans-serif;
-  background-color: #fdfdd4; /* Background format to represent the sticky notes */
+  background-color: #fdfdd4;
 }
 
 /* Style for the left menu/sidebar */

@@ -21,7 +21,7 @@ const geistMono = localFont({
 // Set up page metadata for SEO and browser tab
 export const metadata: Metadata = {
   title: "ToDo Application",
-  description: "Realizat de Eduard Enache si Stanoiu Ionut",
+  description: "Proiect realizat de Eduard Enache si Stanoiu Ionut",
 };
 
 // Set viewport for responsive design

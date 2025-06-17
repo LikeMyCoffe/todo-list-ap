@@ -107,9 +107,6 @@ export default function Home() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Placeholder effect for when a new list is added (currently unused)
-  useEffect(() => {}, [allLists]);
-
   // Check authentication status on component mount and set up auth state listener
   useEffect(() => {
     const checkUser = async () => {
@@ -297,11 +294,6 @@ export default function Home() {
           updateData.due_date = selectedTask.due_date;
         }
 
-        // Only include tags if they exist
-        if (selectedTask.tags && selectedTask.tags.length > 0) {
-          updateData.tags = selectedTask.tags;
-        }
-
         const { error } = await supabase
           .from('tasks')
           .update(updateData)
@@ -386,7 +378,27 @@ export default function Home() {
   const handleRemoveList = async (listId: string) => {
     if (!user) return;
     try {
-      // Remove from Supabase
+      // Find the list object to get its name
+      const listToDelete = dbLists.find(l => l.id === listId);
+      if (!listToDelete) return;
+      const listName = listToDelete.name;
+
+      // 1. Update all tasks with this list to 'Personal' in Supabase
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ list: 'Personal' })
+        .eq('user_id', user.id)
+        .eq('list', listName);
+      if (updateError) {
+        setToast({ message: 'Failed to reassign tasks. Please try again.', type: 'error' });
+        return;
+      }
+      // 2. Update local state for tasks
+      setTasks(tasks => tasks.map(task =>
+        task.list === listName ? { ...task, list: 'Personal' } : task
+      ));
+
+      // 3. Remove from Supabase
       const { error } = await supabase
         .from('lists')
         .delete()
@@ -396,7 +408,7 @@ export default function Home() {
         setToast({ message: 'Failed to delete list. Please try again.', type: 'error' });
         return;
       }
-      // Remove from local state
+      // 4. Remove from local state
       setDbLists(dbLists.filter(l => l.id !== listId));
       // If the deleted list was selected, reset selection
       if (selectedList === listId) setSelectedList(null);
@@ -406,23 +418,6 @@ export default function Home() {
       console.error('Exception deleting list:', err);
     }
   };
-
-  // Prepare lists for MobileNav (with id, name, color, count)
-  const mobileNavLists = dbLists.map(list => ({
-    id: list.id,
-    name: list.name,
-    color: list.color,
-    count: tasks.filter(t => (t.list || 'Personal') === list.name).length
-  }));
-  // Add Personal if not in dbLists
-  if (!dbLists.some(l => l.name === 'Personal')) {
-    mobileNavLists.unshift({
-      id: 'personal',
-      name: 'Personal',
-      color: 'bg-red-500',
-      count: tasks.filter(t => (t.list || 'Personal') === 'Personal').length
-    });
-  }
 
   // Handler for search input (used in sidebar)
   const handleSearch = (query: string) => setSearchQuery(query);
@@ -510,9 +505,6 @@ export default function Home() {
             <button type="submit" className="ml-2 px-2 py-1 text-xs bg-green-500 text-white rounded">Add</button>
           </form>
         </div>
-
-        {/* REMOVE: Tags section */}
-        {/* REMOVE: Settings button */}
 
         {user && (
           <button
@@ -689,8 +681,6 @@ export default function Home() {
                 }}
               />
             </div>
-
-            {/* REMOVE: Tags section from task details */}
 
             <div className="flex justify-between mt-4">
               <button
